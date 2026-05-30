@@ -102,32 +102,20 @@ class NewsmthSearcher:
         
         text_content = soup.get_text()
         
-        lines = text_content.split('\n')
+        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*(\w+)'
         
-        current_title = None
-        current_date = None
-        current_author = None
+        matches = re.findall(pattern, text_content)
         
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            
-            date_match = re.match(r'(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})', line)
-            if date_match:
-                current_date = line
-                continue
-            
-            if current_date and line and not date_match:
-                if keyword.lower() in line.lower():
-                    results.append({
-                        'title': line[:100],
-                        'board': board_name,
-                        'publish_time': current_date,
-                        'url': '',
-                        'summary': '',
-                    })
-                current_date = None
+        for title, date, author in matches:
+            title = title.strip()
+            if title and len(title) > 5 and keyword.lower() in title.lower():
+                results.append({
+                    'title': title,
+                    'board': board_name,
+                    'publish_time': date,
+                    'url': '',
+                    'summary': '',
+                })
         
         return results
     
@@ -137,33 +125,23 @@ class NewsmthSearcher:
         soup = BeautifulSoup(html, 'lxml')
         
         text_content = soup.get_text()
-        lines = text_content.split('\n')
         
-        posts = []
-        current_post = {}
+        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*(\w+)'
         
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            
-            date_match = re.match(r'(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})', line)
-            if date_match:
-                if current_post.get('title'):
-                    current_post['publish_time'] = line
-                    posts.append(current_post)
-                    current_post = {}
-                continue
-            
-            if line and not date_match and len(posts) < max_posts:
-                if not current_post.get('title'):
-                    current_post['title'] = line[:100]
-                    current_post['board'] = board_name
-                    current_post['publish_time'] = ''
-                    current_post['url'] = ''
-                    current_post['summary'] = ''
+        matches = re.findall(pattern, text_content)
         
-        return posts[:max_posts]
+        for title, date, author in matches[:max_posts]:
+            title = title.strip()
+            if title and len(title) > 5:
+                results.append({
+                    'title': title,
+                    'board': board_name,
+                    'publish_time': date,
+                    'url': '',
+                    'summary': '',
+                })
+        
+        return results
     
     def get_post_content(self, board: str, post_id: str) -> Optional[str]:
         """获取帖子内容"""
