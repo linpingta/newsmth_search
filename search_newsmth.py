@@ -62,7 +62,7 @@ class NewsmthSearcher:
         for page in range(1, max_pages + 1):
             try:
                 board_url = f"{board['url']}?p={page}"
-                response = self.session.get(board_url, timeout=10)
+                response = self.session.get(board_url, timeout=20)
                 
                 if response.status_code == 200:
                     page_results = self._parse_board_page(response.text, keyword, board["name"])
@@ -71,11 +71,12 @@ class NewsmthSearcher:
                     if not page_results:
                         break
                 
-                time.sleep(1)
+                time.sleep(1.5)
                 
             except requests.RequestException as e:
                 print(f"获取第{page}页出错: {e}", file=sys.stderr)
-                break
+                time.sleep(2)
+                continue
         
         return results
     
@@ -85,7 +86,7 @@ class NewsmthSearcher:
         results = []
         
         try:
-            response = self.session.get(board["url"], timeout=10)
+            response = self.session.get(board["url"], timeout=20)
             
             if response.status_code == 200:
                 results = self._parse_latest_posts(response.text, board["name"], max_posts)
@@ -100,24 +101,30 @@ class NewsmthSearcher:
         results = []
         soup = BeautifulSoup(html, 'lxml')
         
-        text_content = soup.get_text()
+        title_cells = soup.find_all('td', class_='title_9')
         
-        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*([a-zA-Z]\w*)'
-        
-        matches = re.findall(pattern, text_content)
-        
-        for title, date, author in matches:
-            title = title.strip()
-            title = re.sub(r'^[a-zA-Z]\w*\s*', '', title)
-            
-            if title and len(title) > 5 and keyword.lower() in title.lower():
-                results.append({
-                    'title': title,
-                    'board': board_name,
-                    'publish_time': date,
-                    'url': '',
-                    'summary': '',
-                })
+        for cell in title_cells:
+            link = cell.find('a', href=re.compile(r'/nForum/article/'))
+            if link:
+                title = link.get_text(strip=True)
+                href = link.get('href', '')
+                full_url = f"{self.BASE_URL}{href}" if href.startswith('/') else href
+                
+                if title and keyword.lower() in title.lower():
+                    row = link.find_parent('tr')
+                    publish_time = ''
+                    if row:
+                        time_cell = row.find('td', class_='title_10')
+                        if time_cell:
+                            publish_time = time_cell.get_text(strip=True)
+                    
+                    results.append({
+                        'title': title,
+                        'board': board_name,
+                        'publish_time': publish_time,
+                        'url': full_url,
+                        'summary': '',
+                    })
         
         return results
     
@@ -126,24 +133,35 @@ class NewsmthSearcher:
         results = []
         soup = BeautifulSoup(html, 'lxml')
         
-        text_content = soup.get_text()
+        title_cells = soup.find_all('td', class_='title_9')
         
-        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*([a-zA-Z]\w*)'
+        skip_titles = ['欢迎关注水木职版官方号', '审核通过WorkingLife版治版方针', '状态主题发帖时间']
         
-        matches = re.findall(pattern, text_content)
-        
-        for title, date, author in matches[:max_posts]:
-            title = title.strip()
-            title = re.sub(r'^[a-zA-Z]\w*\s*', '', title)
+        for cell in title_cells:
+            if len(results) >= max_posts:
+                break
             
-            if title and len(title) > 5:
-                results.append({
-                    'title': title,
-                    'board': board_name,
-                    'publish_time': date,
-                    'url': '',
-                    'summary': '',
-                })
+            link = cell.find('a', href=re.compile(r'/nForum/article/'))
+            if link:
+                title = link.get_text(strip=True)
+                href = link.get('href', '')
+                full_url = f"{self.BASE_URL}{href}" if href.startswith('/') else href
+                
+                if title and len(title) > 3 and title not in skip_titles:
+                    row = link.find_parent('tr')
+                    publish_time = ''
+                    if row:
+                        time_cell = row.find('td', class_='title_10')
+                        if time_cell:
+                            publish_time = time_cell.get_text(strip=True)
+                    
+                    results.append({
+                        'title': title,
+                        'board': board_name,
+                        'publish_time': publish_time,
+                        'url': full_url,
+                        'summary': '',
+                    })
         
         return results
     
