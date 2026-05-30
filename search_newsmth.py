@@ -102,12 +102,14 @@ class NewsmthSearcher:
         
         text_content = soup.get_text()
         
-        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*(\w+)'
+        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*([a-zA-Z]\w*)'
         
         matches = re.findall(pattern, text_content)
         
         for title, date, author in matches:
             title = title.strip()
+            title = re.sub(r'^[a-zA-Z]\w*\s*', '', title)
+            
             if title and len(title) > 5 and keyword.lower() in title.lower():
                 results.append({
                     'title': title,
@@ -126,12 +128,14 @@ class NewsmthSearcher:
         
         text_content = soup.get_text()
         
-        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*(\w+)'
+        pattern = r'([^\|]+?)\s*(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2})\s*\|\s*([a-zA-Z]\w*)'
         
         matches = re.findall(pattern, text_content)
         
         for title, date, author in matches[:max_posts]:
             title = title.strip()
+            title = re.sub(r'^[a-zA-Z]\w*\s*', '', title)
+            
             if title and len(title) > 5:
                 results.append({
                     'title': title,
