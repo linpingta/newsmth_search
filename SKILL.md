@@ -1,17 +1,20 @@
 ---
-name: newsmth-job-search
-description: Search job postings on newsmth.net (水木社区) Job board by keyword. Returns job titles, links, publish times, and summaries.
+name: newsmth-career-search
+description: Search job postings on newsmth.net Career_Upgrade board and fetch latest workplace news from WorkingLife board. Supports keyword search, post reading, and news summarization.
 ---
 
-# 水木社区职场招聘搜索
+# 水木社区职场搜索
 
-This skill searches the Job board on 水木社区 (newsmth.net) for job postings matching a keyword.
+This skill searches 水木社区 (newsmth.net) for:
+1. **Job postings** in Career_Upgrade board by keyword
+2. **Workplace news** from WorkingLife board with summarization
 
 ## When to Use
 
-- User wants to search for job postings on 水木社区
-- User mentions newsmth, 水木社区, 水木, or Job board
-- User wants to find recruitment information in Chinese tech community
+- User wants to search for job postings on 水木社区 Career_Upgrade board
+- User wants to get latest workplace news from WorkingLife board
+- User mentions newsmth, 水木社区, 水木, Career_Upgrade, WorkingLife
+- User wants to search recruitment info or summarize workplace discussions
 
 ## Prerequisites
 
@@ -23,75 +26,119 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Basic Search
+### 搜索招聘信息 (Career_Upgrade)
+
+Search job postings by keyword:
 
 ```bash
-python search_newsmth.py "关键字"
+python search_newsmth.py "Python开发" --board career
 ```
 
-Example:
+Search with more pages:
+
 ```bash
-python search_newsmth.py "Python开发"
+python search_newsmth.py "Java" --board career --max-pages 5
 ```
 
-### Search with More Pages
+JSON output:
 
 ```bash
-python search_newsmth.py "Java" --max-pages 5
+python search_newsmth.py "前端" --board career --json
 ```
 
-### JSON Output
+### 获取职场新闻 (WorkingLife)
+
+Get latest workplace news:
 
 ```bash
-python search_newsmth.py "前端" --json
+python search_newsmth.py --board working --max-posts 10
 ```
 
-### Get Post Detail
+Summarize workplace news:
 
 ```bash
-python search_newsmth.py "" --detail "https://www.newsmth.net/nForum/article/Job/123456"
+python search_newsmth.py --board working --summarize
+```
+
+JSON output:
+
+```bash
+python search_newsmth.py --board working --json
+```
+
+### 获取帖子内容
+
+Get specific post content:
+
+```bash
+python search_newsmth.py --board career --post-id 123456
 ```
 
 ## Output Format
 
-Default output:
+### Career Search Results
+
 ```
-找到 5 条相关招聘信息：
+在 Career_Upgrade 板块找到 5 条相关招聘信息：
 
 1. Python开发工程师 - 某互联网公司
    发布时间：2024-01-15
-   链接：https://www.newsmth.net/nForum/article/Job/123456
-   摘要：本公司招聘Python开发工程师，要求...
+   板块：Career_Upgrade
 
 2. ...
 ```
 
-JSON output:
-```json
-[
-  {
-    "title": "Python开发工程师",
-    "url": "https://www.newsmth.net/nForum/article/Job/123456",
-    "post_id": "123456",
-    "board": "Job",
-    "summary": "本公司招聘...",
-    "publish_time": "2024-01-15"
-  }
-]
+### WorkingLife News
+
+```
+WorkingLife 板块最新 10 条职场动态：
+
+1. 我决定存款达到100万就辞职
+   发布时间：2026-05-29
+
+2. 每天上班都很挣扎
+   发布时间：2026-05-28
+
+3. ...
+```
+
+### Summarized News
+
+```
+职场新闻总结：
+
+1. 我决定存款达到100万就辞职
+2. 每天上班都很挣扎
+3. 告诉大家一个好消息，现在已经触底了
+4. 所谓"中产"，只不过是幻觉罢了
+5. 已经开始挣大钱了
+
+共获取 10 条职场动态。
+热门话题包括职场压力、求职面试、行业动态等。
 ```
 
 ## Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| keyword | Search keyword (required) | - |
-| --max-pages | Maximum pages to search | 3 |
+| keyword | Search keyword (for career board) | - |
+| --board | Board to search: career or working | career |
+| --max-pages | Maximum pages to search (career) | 3 |
+| --max-posts | Maximum posts to fetch (working) | 10 |
 | --json | Output in JSON format | false |
-| --detail | Get detail of a specific post URL | - |
+| --summarize | Summarize workplace news | false |
+| --post-id | Get specific post content | - |
+
+## Boards
+
+| Board | URL | Description |
+|-------|-----|-------------|
+| Career_Upgrade | https://www.newsmth.net/nForum/#!board/Career_Upgrade | 职场招聘板块 |
+| WorkingLife | https://www.newsmth.net/nForum/#!board/WorkingLife | 职场生活板块 |
 
 ## Notes
 
-- Searches only the main Job board (Job)
-- Results include title, link, publish time, and summary
+- Career_Upgrade uses pagination: `?p=2`, `?p=3`, etc.
+- WorkingLife provides latest workplace discussions
 - Be respectful to the server (1 second delay between page requests)
 - Requires internet connection to access newsmth.net
