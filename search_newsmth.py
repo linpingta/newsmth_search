@@ -104,7 +104,10 @@ class NewsmthSearcher:
         title_cells = soup.find_all('td', class_='title_9')
         
         for cell in title_cells:
-            link = cell.find('a', href=re.compile(r'/nForum/article/'))
+            # 找到所有包含 /nForum/article/ 的链接，取第二个（标题链接）
+            links = cell.find_all('a', href=re.compile(r'/nForum/article/'))
+            # 第一个链接是"新窗口打开"图标，第二个才是标题链接
+            link = links[1] if len(links) > 1 else (links[0] if links else None)
             if link:
                 title = link.get_text(strip=True)
                 href = link.get('href', '')
@@ -141,7 +144,8 @@ class NewsmthSearcher:
             if len(results) >= max_posts:
                 break
             
-            link = cell.find('a', href=re.compile(r'/nForum/article/'))
+            links = cell.find_all('a', href=re.compile(r'/nForum/article/'))
+            link = links[1] if len(links) > 1 else (links[0] if links else None)
             if link:
                 title = link.get_text(strip=True)
                 href = link.get('href', '')
