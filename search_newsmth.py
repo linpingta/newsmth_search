@@ -46,8 +46,17 @@ class NewsmthSearcher:
         self.session = requests.Session()
         self.session.headers.update(self.HEADERS)
     
-    def search_career(self, keyword: str, max_pages: int = 3) -> List[Dict]:
-        """搜索Career_Upgrade板块的招聘信息"""
+    def search_career(self, keyword: str, max_pages: int = 3, search_content: bool = False, max_content_posts: int = 10) -> List[Dict]:
+        """搜索Career_Upgrade板块的招聘信息
+        
+        Args:
+            keyword: 搜索关键字
+            max_pages: 搜索的板块页数
+            search_content: 是否搜索帖子内容（而不仅是标题）
+            max_content_posts: 最多检查内容的帖子数量
+        """
+        if search_content:
+            return self._search_board_content("career", keyword, max_pages, max_content_posts)
         return self._search_board("career", keyword, max_pages)
     
     def search_working(self, max_posts: int = 10) -> List[Dict]:
@@ -55,7 +64,7 @@ class NewsmthSearcher:
         return self._get_latest_posts("working", max_posts)
     
     def _search_board(self, board_key: str, keyword: str, max_pages: int = 3) -> List[Dict]:
-        """搜索指定板块的帖子"""
+        """搜索指定板块的帖子（仅标题）"""
         board = self.BOARDS[board_key]
         results = []
         
@@ -79,6 +88,84 @@ class NewsmthSearcher:
                 continue
         
         return results
+    
+    def _search_board_content(self, board_key: str, keyword: str, max_pages: int = 3, max_posts: int = 10) -> List[Dict]:
+        """搜索指定板块的帖子（包括内容）
+        
+        先搜索标题，如果标题不匹配，再获取帖子内容检查
+        """
+        board = self.BOARDS[board_key]
+        results = []
+        posts_checked = 0
+        
+        for page in range(1, max_pages + 1):
+            try:
+                board_url = f"{board['url']}?p={page}"
+                response = self.session.get(board_url, timeout=20)
+                
+                if response.status_code == 200:
+                    # 先获取所有帖子
+                    posts = self._parse_latest_posts(response.text, board["name"], max_posts=100)
+                    
+                    for post in posts:
+                        if posts_checked >= max_posts:
+                            break
+                        
+                        posts_checked += 1
+                        
+                        # 1. 先检查标题
+                        if keyword.lower() in post['title'].lower():
+                            results.append(post)
+                            continue
+                        
+                        # 2. 标题不匹配，获取内容检查
+                        print(f"  检查帖子内容: {post['title'][:30]}...", file=sys.stderr)
+                        content = self._get_post_content_text(post['url'])
+                        
+                        if content and keyword.lower() in content.lower():
+                            post['summary'] = content[:200] + "..." if len(content) > 200 else content
+                            results.append(post)
+                        
+                        time.sleep(1)  # 避免请求过快
+                    
+                    if posts_checked >= max_posts:
+                        break
+                
+                time.sleep(1.5)
+                
+            except requests.RequestException as e:
+                print(f"获取第{page}页出错: {e}", file=sys.stderr)
+                time.sleep(2)
+                continue
+        
+        return results
+    
+    def _get_post_content_text(self, url: str) -> Optional[str]:
+        """获取帖子的纯文本内容"""
+        try:
+            response = self.session.get(url, timeout=15)
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'lxml')
+                
+                # 查找帖子内容区域
+                content_div = soup.find('div', class_='b-content')
+                if content_div:
+                    # 提取所有文本，去除多余空白
+                    text = content_div.get_text(separator='\n', strip=True)
+                    # 清理文本
+                    lines = [line.strip() for line in text.split('\n') if line.strip()]
+                    return '\n'.join(lines)
+                
+                # 如果找不到 b-content，尝试其他选择器
+                article = soup.find('article') or soup.find('div', class_='article')
+                if article:
+                    return article.get_text(separator='\n', strip=True)
+        
+        except requests.RequestException as e:
+            print(f"获取帖子内容出错: {e}", file=sys.stderr)
+        
+        return None
     
     def _get_latest_posts(self, board_key: str, max_posts: int = 10) -> List[Dict]:
         """获取指定板块的最新帖子"""
@@ -198,6 +285,10 @@ class NewsmthSearcher:
             if result.get('publish_time'):
                 output.append(f"   发布时间：{result['publish_time']}")
             output.append(f"   板块：{result['board']}")
+            if result.get('summary'):
+                output.append(f"   内容摘要：{result['summary']}")
+            if result.get('url'):
+                output.append(f"   链接：{result['url']}")
             output.append("")
         
         return "\n".join(output)
@@ -247,6 +338,8 @@ def main():
     parser.add_argument('--json', action='store_true', help='以JSON格式输出')
     parser.add_argument('--summarize', action='store_true', help='总结职场新闻')
     parser.add_argument('--post-id', type=str, help='获取指定帖子内容')
+    parser.add_argument('--search-content', action='store_true', help='搜索帖子内容（而不仅是标题）')
+    parser.add_argument('--max-content-posts', type=int, default=10, help='内容搜索时最多检查的帖子数 (默认: 10)')
     
     args = parser.parse_args()
     
@@ -265,7 +358,12 @@ def main():
             print("请提供搜索关键字", file=sys.stderr)
             sys.exit(1)
         
-        results = searcher.search_career(args.keyword, args.max_pages)
+        results = searcher.search_career(
+            args.keyword, 
+            args.max_pages, 
+            search_content=args.search_content,
+            max_content_posts=args.max_content_posts
+        )
         
         if args.json:
             print(json.dumps(results, ensure_ascii=False, indent=2))

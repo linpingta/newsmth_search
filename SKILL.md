@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ### 搜索招聘信息 (Career_Upgrade)
 
-Search job postings by keyword:
+Search job postings by keyword (title only):
 
 ```bash
 python search_newsmth.py "Python开发" --board career
@@ -38,6 +38,12 @@ Search with more pages:
 
 ```bash
 python search_newsmth.py "Java" --board career --max-pages 5
+```
+
+Search in post content (not just title):
+
+```bash
+python search_newsmth.py "Python" --board career --search-content --max-content-posts 10
 ```
 
 JSON output:
@@ -125,6 +131,8 @@ WorkingLife 板块最新 10 条职场动态：
 | --board | Board to search: career or working | career |
 | --max-pages | Maximum pages to search (career) | 3 |
 | --max-posts | Maximum posts to fetch (working) | 10 |
+| --search-content | Search in post content, not just title | false |
+| --max-content-posts | Maximum posts to check content | 10 |
 | --json | Output in JSON format | false |
 | --summarize | Summarize workplace news | false |
 | --post-id | Get specific post content | - |
