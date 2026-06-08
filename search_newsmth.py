@@ -71,7 +71,7 @@ class NewsmthSearcher:
         for page in range(1, max_pages + 1):
             try:
                 board_url = f"{board['url']}?p={page}"
-                response = self.session.get(board_url, timeout=20)
+                response = self.session.get(board_url, timeout=30)
                 
                 if response.status_code == 200:
                     page_results = self._parse_board_page(response.text, keyword, board["name"])
@@ -173,7 +173,7 @@ class NewsmthSearcher:
         results = []
         
         try:
-            response = self.session.get(board["url"], timeout=20)
+            response = self.session.get(board["url"], timeout=30)
             
             if response.status_code == 200:
                 results = self._parse_latest_posts(response.text, board["name"], max_posts)
